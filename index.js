@@ -1,50 +1,22 @@
-var mts = require("./mts-ffi");
-var lib = mts.MultitouchSupport;
-const fingers = {};
-const sys2per = {};
-var persistentId = 1;
-
-function emit(type, payload) {
-    console.log(type, payload);
-}
-
-function mapSystemIdToPersistentId(systemId, createNew) {
-    if (createNew && !sys2per[systemId]) {
-        sys2per[systemId] = (persistentId++);
-    }
-    return sys2per[systemId];
-}
-
-var cb = mts.MTContactCallbackFunction.toPointer(function mtcb(dev, dataBuf, nFingers, ts, frame) {
-    const data = dataBuf.deref();
-    var sysId = data.identifier;
-    const isAlive = (data.size >= 0.01);
-    const isNew = !fingers[sysId];
-
-    const f = {
-        frame: data.frame,
-        timestamp: data.timestamp,
-        state: data.state,
-        pos: data.normalized.pos.toObject(),
-        vel: data.normalized.vel.toObject(),
-        size: data.size,
-        angle: data.angle,
-        minorAxis: data.minorAxis,
-        majorAxis: data.majorAxis,
-    };
-    f.id = mapSystemIdToPersistentId(sysId, isNew && isAlive);
-    if (!isNew && !isAlive) {
-        emit("stop", f);
-        fingers[sysId] = sys2per[sysId] = null;
-        return;
-    }
-    if (!isAlive) return;
-    emit((isNew ? "start" : "move"), f);
-    fingers[sysId] = f;
+const args = require("minimist")(process.argv);
+const port = (0 | args.p) || 34576;
+const WebSocketServer = require("ws").Server;
+const TouchEmitter = require("./lib/touch-emit");
+console.log(`listening on port ${port}`);
+const wss = new WebSocketServer({port: port});
+wss.on("connection", function connection(ws) {
+    console.log("Connection GET.");
 });
+const emit = function emit(type, payload) {
+    const msg = Object.assign({type}, payload);
+    const j = JSON.stringify(msg);
+    wss.clients.forEach(function each(client) {
+        try {
+            client.send(j);
+        } catch(e) {
 
-dev = lib.MTDeviceCreateDefault();
-lib.MTRegisterContactFrameCallback(dev, cb);
-lib.MTDeviceStart(dev, 0);
-setInterval((function () {
-}).bind(cb), 60000);
+        }
+    });
+};
+const emitter = new TouchEmitter(emit);
+global.emitter = emitter;  // stash reference to avoid GC
