@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1">
+    <title>Document</title>
+    <style>
+        div {
+            position: absolute;
+        }
+
+        html, body {
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+<script>
+    var au = new AudioContext();
+    var ws = new WebSocket("ws://127.0.0.1:34576/");
+    var nodes = {};
+
+    function n2f(n) {
+        return Math.pow(2, n / 12) * 440;
+    }
+
+    var scale = [0,2,4,6,8,9];//[0,2,4,7,9];
+
+    var filter = au.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = n2f(12);
+    filter.connect(au.destination);
+
+    ws.onmessage = function (m) {
+        const payload = JSON.parse(m.data);
+        const divId = "d" + payload.id;
+        let node = nodes[payload.id];
+        if (!node) {
+            const div = document.createElement("div");
+            div.id = divId;
+            div.innerHTML = payload.id;
+            document.body.appendChild(div);
+
+            nodes[payload.id] = node = {
+                div: div,
+                osc: au.createOscillator(),
+                amp: au.createGain(),
+            };
+            node.osc.type = "sawtooth";
+            node.osc.connect(node.amp);
+            node.osc.start();
+            node.amp.connect(filter);
+        }
+        var div = node.div;
+        var freq = n2f(-12 + 3 + scale[Math.floor(payload.pos.x * scale.length)]);//440 + payload.pos.x * 440;
+        const vibratoValue = Math.pow(Math.max(0, (payload.size - 1)), 2);
+        node.osc.frequency.value = freq + Math.sin(+new Date()/ 30) * vibratoValue * 50;
+        node.amp.gain.value = payload.pos.y;
+        div.style.left = "" + (payload.pos.x * 100) + "%";
+        div.style.top = "" + ((1 - payload.pos.y) * 100) + "%";
+        const sc = (payload.size * 2);
+        div.style.transform = [
+            "scale(" + (1 + vibratoValue) + ")",
+            "rotate(" + ((payload.angle * 90 / Math.atan2(1, 0)) - 90) + "deg)"
+        ].filter(function (x) {
+            return !!x;
+        }).join(" ");
+        //div.innerHTML = m.data;
+        if (payload.type == "stop") {
+            node.osc.disconnect();
+            nodes[payload.id] = null;
+            document.body.removeChild(div);
+        }
+    };
+</script>
+</body>
+</html>
