@@ -1,20 +1,30 @@
 {
-  "name": "touched",
-  "version": "0.0.1",
-  "description": "",
+  "name": "touchy",
+  "version": "0.1.0",
+  "description": "Serves Mac multitouch data over Web Sockets",
   "main": "index.js",
   "dependencies": {
     "ffi-napi": "^4.0.3",
-    "minimist": "^1.2.5",
+    "minimist": "^1.2.6",
     "ref-array-di": "^1.2.2",
     "ref-napi": "^3.0.3",
     "ref-struct-di": "^1.1.1",
-    "ws": "^1.0.1"
+    "ws": "^8.5.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "eslint": "^8.12.0",
+    "prettier": "^2.6.1"
+  },
+  "bin": {
+    "touchy-server": "./index.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "MIT"
+  "prettier": {
+    "trailingComma": "all"
+  },
+  "license": "MIT",
+  "repository": "git@github.com:akx/touchy.git",
+  "author": "Aarni Koskela <akx@iki.fi>"
 }
